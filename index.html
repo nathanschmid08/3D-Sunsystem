@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Sunsystem</title>
+  <style>
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+    }
+    canvas { 
+      display: block; 
+    }
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      color: white;
+      font-family: Arial, sans-serif;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="controls">
+    Controls:<br>
+    Left Click + Drag: Rotate<br>
+    Right Click + Drag: Pan<br>
+    Scroll: Zoom<br>
+    Double Click: Reset View
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Previous setup code remains the same until the camera controls section
+    if (typeof THREE === 'undefined') {
+      console.error('Three.js failed to load');
+      document.body.innerHTML = 'Error: Failed to load Three.js library';
+      throw new Error('Three.js not loaded');
+    }
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      powerPreference: "high-performance"
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.getElementById('container').appendChild(renderer.domElement);
+
+    // Enhanced lighting
+    const ambientLight = new THREE.AmbientLight(0x222222);
+    scene.add(ambientLight);
+
+    // Create stars
+    function createStars() {
+      const starsGeometry = new THREE.BufferGeometry();
+      const starsMaterial = new THREE.PointsMaterial({
+        color: 0xFFFFFF,
+        size: 1,
+        sizeAttenuation: true
+      });
+
+      const starsVertices = [];
+      for (let i = 0; i < 15000; i++) {
+        const x = THREE.MathUtils.randFloatSpread(15000);
+        const y = THREE.MathUtils.randFloatSpread(15000);
+        const z = THREE.MathUtils.randFloatSpread(15000);
+        starsVertices.push(x, y, z);
+      }
+
+      starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+      const stars = new THREE.Points(starsGeometry, starsMaterial);
+      scene.add(stars);
+    }
+    createStars();
+
+    // Planet creation function with enhanced materials
+    function createPlanet(size, color, distance, emissive = 0x000000, emissiveIntensity = 0, hasAtmosphere = false, atmosphereColor = 0x000000) {
+      const group = new THREE.Group();
+      
+      // Planet sphere with enhanced material
+      const geometry = new THREE.SphereGeometry(size, 64, 64);
+      const material = new THREE.MeshPhongMaterial({
+        color: color,
+        emissive: emissive,
+        emissiveIntensity: emissiveIntensity,
+        shininess: 30,
+        specular: 0x444444,
+        bumpScale: 0.02,
+      });
+      const planet = new THREE.Mesh(geometry, material);
+      
+      if (hasAtmosphere) {
+        const atmosphereGeo = new THREE.SphereGeometry(size * 1.2, 64, 64);
+        const atmosphereMat = new THREE.MeshPhongMaterial({
+          color: atmosphereColor,
+          transparent: true,
+          opacity: 0.2,
+          side: THREE.BackSide,
+          blending: THREE.AdditiveBlending
+        });
+        const atmosphere = new THREE.Mesh(atmosphereGeo, atmosphereMat);
+        group.add(atmosphere);
+      }
+      
+      group.add(planet);
+      group.position.set(distance, 0, 0);
+      
+      return { object: group, distance: distance, core: planet };
+    }
+
+    // Create enhanced sun with corona
+    function createSun() {
+      const sunGroup = new THREE.Group();
+      
+      // Core
+      const sunCore = createPlanet(50, 0xffdd00, 0, 0xffdd00, 1);
+      
+      // Multiple corona layers
+      const coronaColors = [
+        { color: 0xffff00, size: 1.3, opacity: 0.3 },
+        { color: 0xffaa00, size: 1.5, opacity: 0.2 },
+        { color: 0xff7700, size: 1.8, opacity: 0.1 }
+      ];
+      
+      coronaColors.forEach(({ color, size, opacity }) => {
+        const coronaGeo = new THREE.SphereGeometry(50 * size, 32, 32);
+        const coronaMat = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: opacity,
+          side: THREE.BackSide,
+          blending: THREE.AdditiveBlending
+        });
+        const corona = new THREE.Mesh(coronaGeo, coronaMat);
+        sunGroup.add(corona);
+      });
+      
+      sunGroup.add(sunCore.object);
+      
+      // Enhanced sun light
+      const sunLight = new THREE.PointLight(0xffffff, 2, 8000);
+      sunGroup.add(sunLight);
+      
+      return sunGroup;
+    }
+
+    const planets = [];
+    
+    // Create and add sun
+    const sun = createSun();
+    scene.add(sun);
+    
+    // Enhanced planets data
+    const planetsData = [
+      { size: 15, color: 0xaaaaaa, distance: 150, atmosphere: false },  // Mercury
+      { size: 25, color: 0xffd700, distance: 200, atmosphere: true, atmosphereColor: 0xff9933 },  // Venus
+      { size: 30, color: 0x4444ff, distance: 280, atmosphere: true, atmosphereColor: 0x6666ff },  // Earth
+      { size: 8, color: 0xcccccc, distance: 310, atmosphere: false },   // Moon
+      { size: 20, color: 0xff4444, distance: 400, atmosphere: true, atmosphereColor: 0xff6666 },  // Mars
+      { size: 70, color: 0xffad33, distance: 600, atmosphere: true, atmosphereColor: 0xffcc66 },  // Jupiter
+      { size: 60, color: 0xd2b48c, distance: 800, atmosphere: true, atmosphereColor: 0xd4c19c },  // Saturn
+      { size: 40, color: 0x87ceeb, distance: 1000, atmosphere: true, atmosphereColor: 0x99ddff }, // Uranus
+      { size: 40, color: 0x4444ff, distance: 1200, atmosphere: true, atmosphereColor: 0x6666ff }  // Neptune
+    ];
+
+    // Create and add planets
+    planetsData.forEach(data => {
+      const planet = createPlanet(
+        data.size, 
+        data.color, 
+        data.distance, 
+        0x000000, 
+        0, 
+        data.atmosphere, 
+        data.atmosphereColor
+      );
+      scene.add(planet.object);
+      planets.push(planet);
+    });
+
+    // Enhanced Saturn's rings
+    const saturnIndex = 6;
+    function createSaturnRings() {
+      const ringGroup = new THREE.Group();
+      
+      const ringProperties = [
+        { inner: 65, outer: 75, opacity: 0.5 },
+        { inner: 70, outer: 85, opacity: 0.3 },
+        { inner: 80, outer: 90, opacity: 0.4 }
+      ];
+      
+      ringProperties.forEach(prop => {
+        const ringGeometry = new THREE.RingGeometry(prop.inner, prop.outer, 128);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+          color: 0xd2b48c,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: prop.opacity
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = Math.PI / 2;
+        ringGroup.add(ring);
+      });
+      
+      return ringGroup;
+    }
+    
+    planets[saturnIndex].object.add(createSaturnRings());
+
+    // Create orbit lines
+    planetsData.forEach(data => {
+      const orbitGeometry = new THREE.RingGeometry(data.distance - 0.5, data.distance + 0.5, 128);
+      const orbitMaterial = new THREE.MeshBasicMaterial({
+        color: 0x444444,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.2
+      });
+      const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+      orbit.rotation.x = Math.PI / 2;
+      scene.add(orbit);
+    });
+
+    // Enhanced camera controls
+    camera.position.set(0, 400, 1200);
+    camera.lookAt(0, 0, 0);
+
+    let isLeftMouseDown = false;
+    let isRightMouseDown = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let cameraTarget = new THREE.Vector3(0, 0, 0);
+    
+    // Camera state
+    const cameraState = {
+      distance: 1200,
+      polar: Math.PI / 4,    // Vertical angle
+      azimuth: 0,            // Horizontal angle
+      target: new THREE.Vector3(0, 0, 0),
+      minDistance: 100,
+      maxDistance: 5000
+    };
+
+    function updateCameraPosition() {
+      const sinPolar = Math.sin(cameraState.polar);
+      const cosPolar = Math.cos(cameraState.polar);
+      const sinAzimuth = Math.sin(cameraState.azimuth);
+      const cosAzimuth = Math.cos(cameraState.azimuth);
+
+      camera.position.x = cameraState.target.x + cameraState.distance * sinPolar * cosAzimuth;
+      camera.position.y = cameraState.target.y + cameraState.distance * cosPolar;
+      camera.position.z = cameraState.target.z + cameraState.distance * sinPolar * sinAzimuth;
+
+      camera.lookAt(cameraState.target);
+    }
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.button === 0) isLeftMouseDown = true;      // Left click
+      if (e.button === 2) isRightMouseDown = true;     // Right click
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      const deltaMove = {
+        x: e.clientX - previousMousePosition.x,
+        y: e.clientY - previousMousePosition.y
+      };
+
+      if (isLeftMouseDown) {
+        // Rotate
+        cameraState.azimuth += deltaMove.x * 0.003;
+        cameraState.polar = Math.max(0.1, Math.min(Math.PI - 0.1, cameraState.polar - deltaMove.y * 0.003));
+        updateCameraPosition();
+      }
+
+      if (isRightMouseDown) {
+        // Pan
+        const right = new THREE.Vector3();
+        const up = new THREE.Vector3(0, 1, 0);
+        camera.getWorldDirection(right);
+        right.cross(up);
+        
+        cameraState.target.add(right.multiplyScalar(-deltaMove.x));
+        cameraState.target.y += deltaMove.y;
+        updateCameraPosition();
+      }
+
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 0) isLeftMouseDown = false;
+      if (e.button === 2) isRightMouseDown = false;
+    });
+
+    // Prevent context menu on right click
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Enhanced zoom with smooth interpolation
+    document.addEventListener('wheel', (e) => {
+      const zoomSpeed = 0.1;
+      const newDistance = cameraState.distance * (1 + Math.sign(e.deltaY) * zoomSpeed);
+      cameraState.distance = Math.max(cameraState.minDistance, Math.min(cameraState.maxDistance, newDistance));
+      updateCameraPosition();
+    });
+
+    // Double click to reset view
+    document.addEventListener('dblclick', () => {
+      cameraState.distance = 1200;
+      cameraState.polar = Math.PI / 4;
+      cameraState.azimuth = 0;
+      cameraState.target.set(0, 0, 0);
+      updateCameraPosition();
+    });
+
+    // Animation
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotate planets
+      planets.forEach((planet, index) => {
+        const speed = 0.0005 / Math.sqrt(index + 1);
+        const distance = planet.distance;
+        
+        // Orbital rotation
+        planet.object.position.x = distance * Math.cos(Date.now() * speed);
+        planet.object.position.z = distance * Math.sin(Date.now() * speed);
+        
+        // Axial rotation
+        planet.core.rotation.y += 0.02 / (index + 1);
+      });
+
+      // Rotate sun
+      sun.rotation.y += 0.001;
+
+      renderer.render(scene, camera);
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      renderer.setSize(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    });
+
+    // Start animation
+    animate();
+  </script>
+</body>
+</html>
