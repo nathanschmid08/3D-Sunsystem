@@ -51,7 +51,6 @@
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
-    // Previous setup code remains the same until the camera controls section
     if (typeof THREE === 'undefined') {
       console.error('Three.js failed to load');
       document.body.innerHTML = 'Error: Failed to load Three.js library';
@@ -69,7 +68,6 @@
     renderer.setPixelRatio(window.devicePixelRatio);
     document.getElementById('container').appendChild(renderer.domElement);
 
-    // Enhanced lighting
     const ambientLight = new THREE.AmbientLight(0x222222);
     scene.add(ambientLight);
 
@@ -96,11 +94,11 @@
     }
     createStars();
 
-    // Planet creation function with enhanced materials
+    // Planet creation function
     function createPlanet(size, color, distance, emissive = 0x000000, emissiveIntensity = 0, hasAtmosphere = false, atmosphereColor = 0x000000) {
       const group = new THREE.Group();
       
-      // Planet sphere with enhanced material
+      // Planet sphere 
       const geometry = new THREE.SphereGeometry(size, 64, 64);
       const material = new THREE.MeshPhongMaterial({
         color: color,
@@ -131,7 +129,7 @@
       return { object: group, distance: distance, core: planet };
     }
 
-    // Create enhanced sun with corona
+    // Create sun
     function createSun() {
       const sunGroup = new THREE.Group();
       
@@ -173,7 +171,7 @@
     const sun = createSun();
     scene.add(sun);
     
-    // Enhanced planets data
+    // planets data
     const planetsData = [
       { size: 15, color: 0xaaaaaa, distance: 150, atmosphere: false },  // Mercury
       { size: 25, color: 0xffd700, distance: 200, atmosphere: true, atmosphereColor: 0xff9933 },  // Venus
@@ -201,7 +199,7 @@
       planets.push(planet);
     });
 
-    // Enhanced Saturn's rings
+    // Enhanced Saturn rings
     const saturnIndex = 6;
     function createSaturnRings() {
       const ringGroup = new THREE.Group();
@@ -244,7 +242,7 @@
       scene.add(orbit);
     });
 
-    // Enhanced camera controls
+    // camera controls
     camera.position.set(0, 400, 1200);
     camera.lookAt(0, 0, 0);
 
@@ -318,7 +316,7 @@
     // Prevent context menu on right click
     document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // Enhanced zoom with smooth interpolation
+    // zoom with smooth interpolation
     document.addEventListener('wheel', (e) => {
       const zoomSpeed = 0.1;
       const newDistance = cameraState.distance * (1 + Math.sign(e.deltaY) * zoomSpeed);
